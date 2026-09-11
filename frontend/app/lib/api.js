@@ -6,20 +6,21 @@
 
 function getBaseCandidates() {
   const candidates = [];
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && envUrl.trim() !== "") {
+    candidates.push(envUrl.trim());
+  }
   if (typeof window !== "undefined" && window.location) {
     const host = window.location.hostname || "localhost";
-    // 1. Primary: exact same hostname as currently opened in the browser
-    candidates.push(`http://${host}:8000`);
-    // 2. Secondary: complement loopback host
-    if (host === "localhost") {
+    // If running locally
+    if (host === "localhost" || host === "127.0.0.1") {
+      candidates.push(`http://${host}:8000`);
       candidates.push("http://127.0.0.1:8000");
-    } else if (host === "127.0.0.1") {
       candidates.push("http://localhost:8000");
     }
   }
-  const envUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-  if (!candidates.includes(envUrl)) {
-    candidates.push(envUrl);
+  if (!candidates.includes("http://127.0.0.1:8000")) {
+    candidates.push("http://127.0.0.1:8000");
   }
   return candidates;
 }
