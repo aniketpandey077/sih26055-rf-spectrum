@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>COGNIWAR — Algorithm 17: Prediction-Reality Gap (PRG) Engine</title>
+  <style>
+    :root {
+      --bg: #070b12;
+      --card-bg: #0d1522;
+      --card-border: #1a273b;
+      --accent-cyan: #00f2ff;
+      --accent-green: #00ff88;
+      --accent-red: #ff2255;
+      --accent-yellow: #ffd700;
+      --text: #e2e8f0;
+      --text-muted: #8492a6;
+      --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 20px;
+    }
+
+    .title-box h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-algo {
+      background: rgba(0, 242, 255, 0.15);
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn {
+      background: #152238;
+      border: 1px solid var(--card-border);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: #1d2f4d;
+      border-color: var(--accent-cyan);
+    }
+
+    .btn-smart {
+      background: linear-gradient(135deg, #0088ff, #00f2ff);
+      color: #000;
+      border: none;
+      font-weight: 700;
+      box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+    }
+
+    .btn-smart:hover {
+      box-shadow: 0 0 25px rgba(0, 242, 255, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .btn-auto {
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .btn-auto.active {
+      background: var(--accent-green);
+      color: #000;
+      font-weight: 700;
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+    }
+
+    .grid-top {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .card-fsm {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .fsm-header {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .fsm-state-display {
+      margin: 15px 0;
+      padding: 14px;
+      border-radius: 8px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .fsm-state-display.NORMAL {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
+    }
+
+    .fsm-state-display.COUNTER_DECEPTION {
+      background: rgba(255, 34, 85, 0.15);
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
+      box-shadow: 0 0 25px rgba(255, 34, 85, 0.35);
+      animation: pulseAlert 1.5s infinite alternate;
+    }
+
+    @keyframes pulseAlert {
+      from { box-shadow: 0 0 15px rgba(255, 34, 85, 0.3); }
+      to { box-shadow: 0 0 35px rgba(255, 34, 85, 0.7); }
+    }
+
+    .fsm-state-title {
+      font-size: 1.3rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      font-family: var(--font-mono);
+    }
+
+    .fsm-state-desc {
+      font-size: 0.75rem;
+      margin-top: 6px;
+      opacity: 0.85;
+    }
+
+    .chips-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .chip {
+      background: #070e17;
+      border: 1px solid #162234;
+      padding: 8px;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .chip-val {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: var(--font-mono);
+    }
+
+    .chip-lbl {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .spectrum-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .spectrum-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .spectrum-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    canvas#spectrumCanvas {
+      width: 100%;
+      height: 180px;
+      background: #05080e;
+      border: 1px solid #141f30;
+      border-radius: 6px;
+    }
+
+    .rec-box {
+      margin-top: 10px;
+      background: #08101a;
+      border: 1px dashed var(--accent-cyan);
+      border-radius: 6px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    .rec-title {
+      font-weight: 700;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rec-breakdown {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 12px;
+    }
+
+    .grid-bottom {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 20px;
+    }
+
+    .bands-section-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .bands-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+
+    .bands-grid::-webkit-scrollbar {
+      width: 5px;
+    }
+    .bands-grid::-webkit-scrollbar-thumb {
+      background: #1f304d;
+      border-radius: 4px;
+    }
+
+    .band-card {
+      background: #0a111c;
+      border: 1px solid #152238;
+      border-radius: 8px;
+      padding: 12px;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .band-card:hover {
+      border-color: #263d63;
+      transform: translateY(-2px);
+    }
+
+    .band-card.suspicious {
+      border-color: var(--accent-red);
+      background: rgba(255, 34, 85, 0.05);
+    }
+
+    .band-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .band-name {
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: #fff;
+    }
+
+    .band-freq {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .band-alert-badge {
+      background: rgba(255, 34, 85, 0.2);
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .prg-bar-container {
+      margin: 8px 0;
+    }
+
+    .prg-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .prg-track {
+      width: 100%;
+      height: 7px;
+      background: #141f30;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .prg-fill {
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease, background-color 0.3s ease;
+      border-radius: 4px;
+    }
+
+    .band-metrics {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #142033;
+      font-family: var(--font-mono);
+    }
+
+    .band-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
+    .btn-mini-scan {
+      padding: 3px 10px;
+      font-size: 0.7rem;
+      background: #101c2e;
+      border: 1px solid #203350;
+    }
+
+    .btn-mini-scan:hover {
+      background: var(--accent-cyan);
+      color: #000;
+      border-color: var(--accent-cyan);
+    }
+
+    .xai-panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .xai-header {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .xai-terminal {
+      background: #05080e;
+      border: 1px solid #141f30;
+      border-radius: 6px;
+      padding: 12px;
+      flex-grow: 1;
+      max-height: 520px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .xai-item {
+      padding: 8px 10px;
+      border-radius: 4px;
+      background: #090f1a;
+      border-left: 3px solid var(--accent-cyan);
+      line-height: 1.4;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .xai-item.suspicious {
+      border-left-color: var(--accent-red);
+      background: rgba(255, 34, 85, 0.08);
+      color: #ffb3c0;
+    }
+
+    .xai-item.hit {
+      border-left-color: var(--accent-green);
+      background: rgba(0, 255, 136, 0.05);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-box">
+        <h1>
+          COGNIWAR RF SCANNER
+          <span class="badge-algo">ALGORITHM 17: PRG ENGINE</span>
+        </h1>
+        <div class="subtitle">
+          Prediction-Reality Gap "Silence is Signal" Paradigm & Counter-Deception Controller
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnSmartScan" class="btn btn-smart" onclick="runSmartScan()">
+          ⚡ SMART SCAN (PRG)
+        </button>
+        <button id="btnAutoScan" class="btn btn-auto" onclick="toggleAutoScan()">
+          ▶ AUTO SCAN
+        </button>
+        <button id="btnReset" class="btn" onclick="resetEngine()">
+          ↺ RESET
+        </button>
+        <a href="/" class="btn" style="text-decoration:none;">
+          ⊞ MAIN DASHBOARD
+        </a>
+      </div>
+    </header>
+
+    <div class="grid-top">
+      <!-- FSM State Card -->
+      <div class="card card-fsm">
+        <div>
+          <div class="fsm-header">DYNAMIC FSM STATE</div>
+          <div id="fsmCard" class="fsm-state-display NORMAL">
+            <div id="fsmTitle" class="fsm-state-title">NORMAL</div>
+            <div id="fsmDesc" class="fsm-state-desc">Standard Multi-Factor Priority Weights Active</div>
+          </div>
+        </div>
+
+        <div class="chips-row">
+          <div class="chip">
+            <div id="chipTick" class="chip-val">0</div>
+            <div class="chip-lbl">Scan Tick</div>
+          </div>
+          <div class="chip">
+            <div id="chipSuspicious" class="chip-val" style="color:var(--accent-red);">0</div>
+            <div class="chip-lbl">Suspicious</div>
+          </div>
+          <div class="chip">
+            <div id="chipGaps" class="chip-val" style="color:var(--accent-yellow);">0</div>
+            <div class="chip-lbl">Silent Gaps</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spectrum Canvas & Recommendation Card -->
+      <div class="card spectrum-box">
+        <div class="spectrum-header">
+          <div class="spectrum-title">
+            <span>📡 LIVE RF SPECTRUM & EMITTER ACTIVITY</span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">
+            100.0 MHz — 1000.0 MHz (18 Bands)
+          </div>
+        </div>
+        <canvas id="spectrumCanvas"></canvas>
+
+        <div class="rec-box">
+          <div class="rec-title">
+            <span>🎯 NEXT RECOMMENDED TARGET:</span>
+            <span id="recBandTarget" style="color:#fff; font-family:var(--font-mono);">Evaluating...</span>
+          </div>
+          <div id="recBreakdown" class="rec-breakdown">
+            <span>P(act): --</span>
+            <span>Uncertainty: --</span>
+            <span>PRG: --</span>
+            <span>Staleness: --</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-bottom">
+      <!-- Bands Grid -->
+      <div class="card">
+        <div class="bands-section-title">
+          <span>18 RF BANDS — PREDICTION & REALITY GAP SUSPICION BARS</span>
+          <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">
+            Threshold: PRG ≥ 3.0 triggers COUNTER_DECEPTION
+          </span>
+        </div>
+        <div id="bandsGrid" class="bands-grid">
+          <!-- Band cards rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- XAI Audit Feed -->
+      <div class="card xai-panel">
+        <div class="xai-header">
+          <span>🔍 EXPLAINABLE AI (XAI) AUDIT LOG</span>
+        </div>
+        <div id="xaiTerminal" class="xai-terminal">
+          <div class="xai-item">
+            [System initialized] Algorithm 17 Prediction-Reality Gap Engine ready. Click SMART SCAN to evaluate bands.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let autoInterval = null;
+    let cachedSpectrumPoints = [];
+
+    // Colors
+    function getPrgColor(score) {
+      if (score >= 3.0) return "var(--accent-red)";
+      if (score >= 1.0) return "var(--accent-yellow)";
+      return "var(--accent-green)";
+    }
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/prg-status`);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderStatus(data);
+      } catch (err) {
+        console.error("Failed to fetch PRG status", err);
+      }
+    }
+
+    async function fetchRecommendation() {
+      try {
+        const res = await fetch(`${API_BASE}/smart-scan`);
+        if (!res.ok) return;
+        const data = await res.json();
+        renderRecommendation(data);
+      } catch (err) {
+        console.error("Failed to fetch recommendation", err);
+      }
+    }
+
+    function renderStatus(data) {
+      // FSM
+      const fsmCard = document.getElementById("fsmCard");
+      const fsmTitle = document.getElementById("fsmTitle");
+      const fsmDesc = document.getElementById("fsmDesc");
+      fsmCard.className = `fsm-state-display ${data.fsm_state}`;
+      fsmTitle.innerText = data.fsm_state;
+
+      if (data.fsm_state === "COUNTER_DECEPTION") {
+        fsmDesc.innerText = "🚨 Enemy Deception Detected! Staleness x2.5, PRG x1.5 active";
+      } else {
+        fsmDesc.innerText = "Standard Multi-Factor Priority Weights Active";
+      }
+
+      // Chips
+      document.getElementById("chipTick").innerText = data.current_tick;
+      document.getElementById("chipSuspicious").innerText = data.suspicious_bands.length;
+      document.getElementById("chipGaps").innerText = data.total_suspicious_silences;
+
+      // Bands Grid
+      const grid = document.getElementById("bandsGrid");
+      grid.innerHTML = "";
+
+      data.bands.forEach(b => {
+        const isSusp = b.prg_score > 0;
+        const pct = Math.min((b.prg_score / 3.0) * 100, 100);
+        const col = getPrgColor(b.prg_score);
+
+        const card = document.createElement("div");
+        card.className = `band-card ${isSusp ? "suspicious" : ""}`;
+
+        card.innerHTML = `
+          <div class="band-card-header">
+            <div>
+              <span class="band-name">Band ${b.band_id}</span>
+              <span class="band-freq">(${100 + (b.band_id-1)*50} - ${150 + (b.band_id-1)*50} MHz)</span>
+            </div>
+            ${isSusp ? `<div class="band-alert-badge">🚨 SUSPICIOUS (${b.prg_score.toFixed(1)})</div>` : ''}
+          </div>
+
+          <div class="prg-bar-container">
+            <div class="prg-bar-label">
+              <span>PRG Suspicion:</span>
+              <span style="color:${col}; font-weight:700;">${b.prg_score.toFixed(1)} / 3.0</span>
+            </div>
+            <div class="prg-track">
+              <div class="prg-fill" style="width:${pct}%; background:${col};"></div>
+            </div>
+          </div>
+
+          <div class="band-metrics">
+            <span>P(act): <b>${(b.p_active * 100).toFixed(0)}%</b></span>
+            <span>Uncertainty: <b>${b.uncertainty.toFixed(2)}</b></span>
+            <span>Scans: <b>${b.total_scans}</b></span>
+            <span>Hits: <b>${b.total_hits}</b></span>
+          </div>
+
+          <div class="band-actions">
+            <button class="btn btn-mini-scan" onclick="scanSpecificBand(${b.band_id})">Scan Now</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      // Audit Log
+      if (data.recent_audit && data.recent_audit.length > 0) {
+        const term = document.getElementById("xaiTerminal");
+        term.innerHTML = "";
+        data.recent_audit.forEach(item => {
+          const div = document.createElement("div");
+          let cls = "xai-item";
+          if (item.suspicious_silence) cls += " suspicious";
+          else if (item.signal_detected) cls += " hit";
+          div.className = cls;
+          div.innerText = item.justification;
+          term.appendChild(div);
+        });
+      }
+    }
+
+    function renderRecommendation(data) {
+      document.getElementById("recBandTarget").innerText = `Band ${data.recommended_band_id} (Score: ${data.recommended_score})`;
+      const top = data.breakdown[0];
+      if (top) {
+        document.getElementById("recBreakdown").innerHTML = `
+          <span>P(act): <b>${top.p_active.toFixed(2)}</b></span>
+          <span>Uncert: <b>${top.uncertainty.toFixed(2)}</b></span>
+          <span>PRG: <b>${top.prg_contrib.toFixed(2)}</b></span>
+          <span>Stale: <b>${top.staleness_contrib.toFixed(2)}</b></span>
+        `;
+      }
+    }
+
+    async function runSmartScan() {
+      try {
+        const recRes = await fetch(`${API_BASE}/smart-scan`);
+        const rec = await recRes.json();
+        const targetId = rec.recommended_band_id;
+        await scanSpecificBand(targetId);
+      } catch (err) {
+        console.error("Smart scan failed", err);
+      }
+    }
+
+    async function scanSpecificBand(bandId) {
+      try {
+        const res = await fetch(`${API_BASE}/scan/${bandId}`);
+        const data = await res.json();
+        await fetchStatus();
+        await fetchRecommendation();
+      } catch (err) {
+        console.error("Scan band failed", err);
+      }
+    }
+
+    function toggleAutoScan() {
+      const btn = document.getElementById("btnAutoScan");
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        btn.classList.remove("active");
+        btn.innerText = "▶ AUTO SCAN";
+      } else {
+        btn.classList.add("active");
+        btn.innerText = "⏹ STOP AUTO";
+        runSmartScan();
+        autoInterval = setInterval(runSmartScan, 1100);
+      }
+    }
+
+    async function resetEngine() {
+      try {
+        await fetch(`${API_BASE}/reset`, { method: "POST" });
+        await fetchStatus();
+        await fetchRecommendation();
+      } catch (err) {
+        console.error("Reset failed", err);
+      }
+    }
+
+    // Canvas Spectrum Renderer
+    const canvas = document.getElementById("spectrumCanvas");
+    const ctx = canvas.getContext("2d");
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth - 34;
+      canvas.height = 180;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    async function updateSpectrum() {
+      try {
+        const res = await fetch(`${API_BASE}/spectrum`);
+        if (res.ok) {
+          const data = await res.json();
+          cachedSpectrumPoints = data.points || [];
+        }
+      } catch {}
+    }
+
+    function drawSpectrum() {
+      ctx.fillStyle = "#05080e";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Grid lines
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.lineWidth = 1;
+      for (let y = 30; y < canvas.height; y += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+      for (let x = 40; x < canvas.width; x += 60) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+
+      if (!cachedSpectrumPoints.length) {
+        requestAnimationFrame(drawSpectrum);
+        return;
+      }
+
+      // Draw waveform
+      ctx.beginPath();
+      ctx.strokeStyle = "#00f2ff";
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = "#00f2ff";
+      ctx.shadowBlur = 8;
+
+      const pts = cachedSpectrumPoints;
+      const step = canvas.width / (pts.length - 1);
+
+      pts.forEach((pt, i) => {
+        // amplitude typically -100 to -30 dBm
+        const normY = (pt.amplitude - (-110)) / 80;
+        const y = canvas.height - Math.max(10, Math.min(canvas.height - 10, normY * canvas.height));
+        const x = i * step;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      requestAnimationFrame(drawSpectrum);
+    }
+
+    // Initial sequence
+    fetchStatus();
+    fetchRecommendation();
+    updateSpectrum();
+    setInterval(updateSpectrum, 800);
+    requestAnimationFrame(drawSpectrum);
+  </script>
+</body>
+</html>
