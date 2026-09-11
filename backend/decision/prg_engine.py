@@ -236,18 +236,26 @@ class PRGEngine:
         p_predicted = b.p_active
         u_predicted = b.uncertainty
 
-        # 2. Suspicious silence condition
-        is_suspicious_silence = (not signal_detected) and (p_predicted >= PREDICTION_THRESHOLD)
-
-        if is_suspicious_silence:
-            prg_delta = 1.0
-            b.prg_score += 1.0
-            self.total_suspicious_silences += 1
+        # 2. Suspicious silence condition:
+        # A band that was expected to be active goes silent -> triggers suspicion.
+        # Once verified silent by an inspection probe, suspicion decays to prevent deadlock.
+        is_suspicious_silence = False
+        prg_delta = 0.0
+        if not signal_detected:
+            if b.prg_score == 0.0 and p_predicted >= PREDICTION_THRESHOLD:
+                is_suspicious_silence = True
+                prg_delta = 1.5
+                b.prg_score += 1.5
+                self.total_suspicious_silences += 1
+            elif b.prg_score > 0.0:
+                # Confirmed vacant upon inspection probe: decay suspicion so scanner can hunt next band
+                prg_delta = -1.0
+                b.prg_score = max(0.0, round(b.prg_score - 1.0, 2))
         else:
-            prg_delta = 0.0
-            # Gradual decay of suspicion if transmission resumes
-            if signal_detected and b.prg_score > 0.0:
-                b.prg_score = max(0.0, round(b.prg_score - 0.5, 2))
+            # Signal resumed or active: decay suspicion
+            if b.prg_score > 0.0:
+                prg_delta = -0.75
+                b.prg_score = max(0.0, round(b.prg_score - 0.75, 2))
 
         # 3. Update empirical history
         b.total_scans += 1

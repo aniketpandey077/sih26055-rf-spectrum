@@ -178,6 +178,30 @@ class SpectrumScannerSystem:
             band_eval["effective_rank_score"] = band_eval["priority_score"] + random.uniform(0.0001, 0.005)
             evaluated_bands.append(band_eval)
 
+        # Algorithm 18: Tactical Burst Dwell Policy & PRG Cognitive Targeting
+        # In Electronic Warfare, intercepting an active burst/packet requires dwelling
+        # across the active transmission frame (up to 3 consecutive hits) before cooldown
+        # forces release to prevent starvation.
+        if self.recent_scanned_bands:
+            last_bid = self.recent_scanned_bands[-1]
+            last_stats = self.temporal_history.lifetime_stats[last_bid]
+            if 1 <= last_stats["consecutive_hits"] < 4:
+                for eb in evaluated_bands:
+                    if eb["band_id"] == last_bid:
+                        eb["priority_score"] += 2.5
+                        eb["effective_rank_score"] += 2.5
+                        eb["top_reason"] = f"Tactical Burst Dwell: Intercepting active transmission frame ({last_stats['consecutive_hits']}/3)."
+
+        # Algorithm 17: PRG Suspicion prioritization
+        for eb in evaluated_bands:
+            bid = eb["band_id"]
+            prg_score = prg_engine.bands[bid].prg_score
+            if prg_score > 0:
+                eb["priority_score"] += min(prg_score * 0.4, 1.2)
+                eb["effective_rank_score"] += min(prg_score * 0.4, 1.2)
+                if eb["priority_score"] > 1.5 and "Tactical Burst" not in eb["top_reason"]:
+                    eb["top_reason"] = f"PRG Suspicious Silence: Tracking potential evasive hopper (PRG: {prg_score:.1f})."
+
         # Sort bands by effective priority score descending
         evaluated_bands.sort(key=lambda x: x["effective_rank_score"], reverse=True)
         self.latest_rankings = evaluated_bands

@@ -110,7 +110,7 @@ class StochasticRFEnvironment:
     Dynamically spawns, mutates, and extinguishes random emitters.
     """
 
-    def __init__(self, min_emitters: int = 3, max_emitters: int = 6):
+    def __init__(self, min_emitters: int = 1, max_emitters: int = 2):
         self.min_emitters = min_emitters
         self.max_emitters = max_emitters
         self.next_id = 1
@@ -159,7 +159,7 @@ class StochasticRFEnvironment:
             self._spawn_emitter()
 
         # Occasional random transient burst anywhere in spectrum
-        if random.random() < 0.25:
+        if random.random() < 0.12:
             self._spawn_emitter()
 
     def get_active_signals(self) -> List[Dict[str, Any]]:
